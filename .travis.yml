@@ -1,0 +1,38 @@
+sudo: required
+
+cache:
+  directories:
+    - "$HOME/google-cloud-sdk/"
+
+branches:
+  only:
+    - staging
+    - master
+
+env:
+  - CLUSTER_NAME="helm-neo4j-cluster"
+
+addons:
+  hosts:
+    - localhost
+    - dev-controller
+
+before_script:
+  - gcloud version || true
+  - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk; export CLOUDSDK_CORE_DISABLE_PROMPTS=1; curl https://sdk.cloud.google.com | bash; fi
+  # Add gcloud to $PATH
+  - source /home/travis/google-cloud-sdk/path.bash.inc
+  - gcloud version
+  - echo $GCLOUD_SERVICE_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
+  - curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.7.0/bin/linux/amd64/kubectl
+  - chmod +x ./kubectl
+  - sudo mv ./kubectl /usr/local/bin/kubectl
+  - curl -LO https://kubernetes-helm.storage.googleapis.com/helm-v2.5.0-linux-amd64.tar.gz
+  - tar -xvf helm-v2.5.0-linux-amd64.tar.gz
+  - chmod +x ./linux-amd64/helm
+  - sudo mv ./linux-amd64/helm /usr/local/bin/helm
+
+after_script:
+  - gcloud container clusters delete ${CLUSTER_NAME} --zone "europe-west1-b" -q
+
+script: sudo -E su $(whoami) -c './incubator/neo4j/build/ci.sh'
